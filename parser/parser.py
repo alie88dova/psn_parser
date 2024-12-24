@@ -65,7 +65,6 @@ def get_info(
         discont_percent: int
     }]
     """
-    url = "https://web.np.playstation.com/api/graphql/v1/op?operationName=conceptRetrieveForUpsellWithCtas&variables=%7B%22conceptId%22%3A%2210008688%22%7D&extensions=%7B%22persistedQuery%22%3A%7B%22version%22%3A1%2C%22sha256Hash%22%3A%22278822e6c6b9f304e4c788867b3e8a448c67847ac932d09213d5085811be3a18%22%7D%7D"
     headers = {
         "accept": "application/json",
         "accept-encoding": "gzip, deflate, br, zstd",
