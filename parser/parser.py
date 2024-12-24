@@ -51,7 +51,6 @@ def get_games_ids(
     return ans, response['data']['categoryGridRetrieve']['pageInfo']['totalCount']
 
 
-
 def get_info(
         id: int,
 ) -> list[dict]:
