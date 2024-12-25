@@ -1,3 +1,4 @@
+import json
 import re
 import time
 
@@ -6,6 +7,10 @@ import asyncio
 
 from parser.data import categories_url, game_url, headers as head
 from itertools import chain
+from aiohttp import ClientSession
+
+
+storage = {}
 
 
 async def get_response(
@@ -13,12 +18,14 @@ async def get_response(
         headers,
         proxy=None
 ):
-    response = requests.get(
+    async with storage['session'].get(
         url=url,
         headers=headers,
-        proxies=proxy
-    )
-    return response
+        proxy=proxy
+    ) as response:
+        return await response.json()
+
+
 
 
 async def get_games_ids(
@@ -41,7 +48,6 @@ async def get_games_ids(
         proxy=proxy
     )
     print(time.strftime('%X'), 'end')
-    response = response.json()
     if 'errors' in response.keys():
         x = response['errors']
         raise Exception(f"{x[0]['message']}")
@@ -67,17 +73,18 @@ def check_connection(
 
 
 async def get_info(
-        url:str,
+        url: str,
         headers: dict,
-        proxy = None
+        proxy=None
 ) -> list[dict]:
-
-    response = requests.get(
+    print('Start load info')
+    response = await get_response(
         url=url,
         headers=headers,
-        proxies=proxy
+        proxy=proxy
     )
-    response = response.json()['data']['conceptRetrieve']['products']
+    print('End Load Info')
+    response = response['data']['conceptRetrieve']['products']
     ans = []
     for game in response:
         if game['webctas'] != []:
@@ -93,7 +100,6 @@ async def get_info(
                 "discont_percent": 0 if x['discountText'] is None or x['discountText'] == "Dahil" else int(
                     re.findall(r'\d+', x['discountText'])[0])
             })
-
     return ans
 
 
@@ -121,23 +127,37 @@ async def get_all_games(
     return list(chain.from_iterable(result))
 
 
-if __name__ == '__main__':
-    a = asyncio.run(get_all_games(
-
-    ))
-    print(len(a))
-    all_games_json = []
-    for game_id in a:
-        print(game_id)
-        all_games_json.append(
-            asyncio.run(get_info(
-                game_url(game_id),
-                head,
-                proxy=None
-                )
+async def get_all_game_info(games_id: list, proxy):
+    task_list = []
+    for game_id in games_id:
+        task_list.append(asyncio.create_task(
+            get_info(
+                url=game_url(game_id),
+                headers=head,
+                proxy=proxy
             )
-        )
-    all_games_json = list(chain.from_iterable(all_games_json))
-    print(len(all_games_json))
+        ))
+    result = await asyncio.gather(*task_list)
 
+    return list(chain.from_iterable(result))
+
+
+async def main():
+    storage['session'] = ClientSession()
+    async with storage['session']:
+        game_list = await get_all_games(
+
+        )
+        ans = await get_all_game_info(
+            game_list,
+            proxy=None
+        )
+        return ans
+
+
+if __name__ == '__main__':
+    full_games_json = asyncio.run(main())
+    print(len(full_games_json))
+    with open('all_games.json', 'w') as f:
+        f.writelines(json.dumps(full_games_json))
 
